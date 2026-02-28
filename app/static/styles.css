@@ -44,9 +44,8 @@ body {
 }
 
 .header-inner {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 1rem 1.5rem;
+  width: 100%;
+  padding: 1rem 1.5rem 1rem 1rem;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -60,7 +59,7 @@ body {
   line-height: 0.9;
   letter-spacing: -0.02em;
   color: #1f1f1f;
-  margin-right: 0.35rem;
+  margin: 0 0.35rem 0 0;
 }
 
 .logo {
@@ -511,7 +510,7 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
   .header-inner {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1rem 0.75rem 0.75rem;
   }
 
   .wealthsimple-wordmark {
