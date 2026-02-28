@@ -10,6 +10,9 @@ def test_health_ok(client):
     data = r.json()
     assert data["status"] == "ok"
     assert data["database"] == "connected"
+    assert "llm" in data
+    assert data["llm"]["provider"] in ("openai", "cursor")
+    assert isinstance(data["llm"]["configured"], bool)
 
 
 def test_health_returns_json(client):

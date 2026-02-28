@@ -143,35 +143,50 @@ Household financial data (use these numbers and names):
 
 
 def _fallback_recommendation_from_context(context: dict) -> str:
-    """Build a short, context-aware recommendation when LLM is unavailable."""
-    parts = []
-    balances = context.get("balances", []) or context.get("accounts", [])
-    savings_cents = 0
-    for b in balances:
-        name = (b.get("account_name") or b.get("name") or "").lower()
-        if "savings" in name or "chequing" in name:
-            savings_cents += b.get("balance_cents", 0) or 0
-    if savings_cents > 0:
-        low = savings_cents / 100 * 0.005
-        high = savings_cents / 100 * 0.04
-        extra = high - low
-        parts.append(
-            f"You have ${savings_cents / 100:,.0f} in chequing/savings. "
-            f"Moving it to Wealthsimple Cash (4% ongoing) could earn about ${extra:,.0f} more per year than typical big-bank rates (~0.5%)."
+    """Build a question-aware recommendation when LLM is unavailable."""
+    question = (context.get("question") or "").strip()
+    question_lc = question.lower()
+    candidates = _build_fallback_recommendations_list(context)
+    if not candidates:
+        return (
+            "Consider prioritizing registered accounts first (TFSA/RRSP/FHSA as relevant), "
+            "then optimize cash returns and revisit contribution room using CRA My Account."
         )
-    goals_list = context.get("goals", [])
-    has_education = any("educ" in (g.get("name") or "").lower() for g in goals_list)
-    if has_education or context.get("resp_eligibility"):
-        parts.append(
-            "Consider maxing RESP contributions to get the 20% CESG match (up to $500 per child per year on the first $2,500)."
-        )
-    room = context.get("contribution_room", {})
-    tfsa = (room.get("tfsa") or {}).get("current_balance_cents", 0) or 0
-    parts.append(
-        f"TFSA: $7,000/year limit—top up for tax-free growth. RRSP for retirement; FHSA if you're a first-time home buyer ($8k/yr, $40k lifetime). "
-        "Check CRA My Account for your exact room."
+
+    keyword_groups = {
+        "resp": ("resp", "cesg", "education", "child", "kids"),
+        "tfsa": ("tfsa", "tax free"),
+        "rrsp": ("rrsp", "retire", "retirement"),
+        "fhsa": ("fhsa", "home", "first-time"),
+        "cash": ("cash", "savings", "chequing", "emergency", "interest"),
+        "tax": ("tax", "non-registered", "non registered", "harvest"),
+    }
+
+    ranked: list[dict] = []
+    if question_lc:
+        for rec in candidates:
+            rec_text = f"{rec.get('title', '')} {rec.get('response', '')}".lower()
+            score = 0
+            for terms in keyword_groups.values():
+                if any(term in question_lc for term in terms):
+                    score += sum(1 for term in terms if term in rec_text and term in question_lc)
+            if score > 0:
+                ranked.append({"rec": rec, "score": score})
+        ranked.sort(key=lambda x: x["score"], reverse=True)
+
+    selected: list[dict] = [x["rec"] for x in ranked[:3]]
+    if not selected:
+        selected = candidates[:3]
+
+    opener = (
+        f"Based on your question about \"{question}\", here are the best next steps:"
+        if question
+        else "Based on your household data, here are the best next steps:"
     )
-    return " ".join(parts)
+    lines = [opener]
+    for i, rec in enumerate(selected, start=1):
+        lines.append(f"{i}. {rec.get('title', 'Recommendation')}: {rec.get('response', '')}")
+    return "\n".join(lines)
 
 
 def _build_fallback_recommendations_list(context: dict) -> list[dict]:
@@ -427,13 +442,28 @@ def _call_llm(prompt: str, context: dict | None = None, max_tokens: int = 700) -
         "Consider RESP for the 20% CESG match, TFSA for tax-free growth ($7k/yr), RRSP for retirement, and FHSA for first-time buyers. "
         "Moving big-bank savings to Wealthsimple Cash could earn ~4% vs ~0.5%. Check CRA My Account for your exact room."
     )
-    if not (getattr(settings, "openai_api_key", None) and settings.openai_api_key.strip()):
-        return fallback
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=settings.openai_api_key)
+        provider = (getattr(settings, "llm_provider", "openai") or "openai").strip().lower()
+        if provider == "cursor":
+            cursor_key = (getattr(settings, "cursor_api_key", None) or "").strip()
+            if not cursor_key:
+                return fallback
+            client = OpenAI(
+                api_key=cursor_key,
+                base_url=(getattr(settings, "cursor_base_url", None) or "https://api.cursor.com/v1").strip(),
+            )
+            model = (getattr(settings, "cursor_model", None) or "gpt-4o-mini").strip()
+        else:
+            openai_key = (getattr(settings, "openai_api_key", None) or "").strip()
+            if not openai_key:
+                return fallback
+            base_url = (getattr(settings, "llm_base_url", None) or "").strip()
+            client = OpenAI(api_key=openai_key, base_url=base_url or None)
+            model = (getattr(settings, "llm_model", None) or "gpt-4o-mini").strip()
+
         r = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
         )
@@ -635,7 +665,15 @@ def run_recommendation_from_context(
     """
     prompt = _build_prompt(context)
     narrative = _call_llm(prompt, context)
-    chart_spec = _build_chart_spec(context, narrative) if include_visualization else None
+    chart_spec = None
+    if include_visualization:
+        # Use question-driven strategy chart first (same engine used by recommendation items),
+        # so single "Get recommendations" charts change with the user's prompt.
+        strategy_title = (context.get("question") or "").strip() or "Personalized strategy"
+        strategy_item = {"title": strategy_title, "response": narrative}
+        chart_spec = _build_chart_spec_for_recommendation(context, strategy_item, 0)
+        if not chart_spec:
+            chart_spec = _build_chart_spec(context, narrative)
     return {"narrative": narrative, "chart_spec": chart_spec}
 
 

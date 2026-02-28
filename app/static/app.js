@@ -407,6 +407,7 @@
     const narrativeEl = document.getElementById('recommendation-narrative');
     const chartContainer = document.getElementById('recommendation-chart-container');
     const chartCanvas = document.getElementById('recommendation-chart');
+    const chartMetrics = document.getElementById('recommendation-chart-metrics');
     const chartNote = document.getElementById('recommendation-chart-note');
 
     show(loadingEl);
@@ -437,14 +438,15 @@
 
       const spec = data.chart_spec;
       if (chartNote) chartNote.textContent = '';
+      if (chartMetrics) chartMetrics.innerHTML = '';
       if (spec && spec.type === 'five_year_projection' && spec.labels && spec.series_current_dollars && spec.series_recommended_dollars) {
         show(chartContainer);
         if (chartInstance) chartInstance.destroy();
-        chartInstance = renderChartSpec(spec, chartCanvas, chartNote);
+        chartInstance = renderChartSpec(spec, chartCanvas, chartNote, chartMetrics);
       } else if (spec && spec.type === 'before_after_interest' && spec.labels && spec.values_dollars) {
         show(chartContainer);
         if (chartInstance) chartInstance.destroy();
-        chartInstance = renderChartSpec(spec, chartCanvas, chartNote);
+        chartInstance = renderChartSpec(spec, chartCanvas, chartNote, chartMetrics);
       } else {
         hide(chartContainer);
       }

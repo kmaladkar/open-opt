@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,12 +8,25 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.core.database import get_db, init_db
+from app.core.config import settings
 from app.api import health, auth, households, accounts, goals, agent_help, recommendations
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    provider = (getattr(settings, "llm_provider", "openai") or "openai").strip().lower()
+    if provider == "cursor":
+        key_ok = bool((getattr(settings, "cursor_api_key", "") or "").strip())
+    else:
+        key_ok = bool((getattr(settings, "openai_api_key", "") or "").strip())
+    logger.info("Open Opt startup complete (llm_provider=%s, api_key_configured=%s)", provider, key_ok)
     yield
 
 

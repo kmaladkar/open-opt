@@ -1,6 +1,9 @@
 """Tests for recommendation list visualization payload."""
 
-from app.agents.subagents.visualization import run_recommendation_list_from_context
+from app.agents.subagents.visualization import (
+    run_recommendation_from_context,
+    run_recommendation_list_from_context,
+)
 from app.schemas.recommendations import RecommendationItem
 
 
@@ -66,3 +69,39 @@ def test_recommendation_item_exposes_chart_spec_field():
         }
     )
     assert "chart_spec" in item.model_dump()
+
+
+def test_single_recommendation_fallback_varies_by_question():
+    base = _sample_context()
+    resp_education = run_recommendation_from_context(
+        {**base, "question": "How should we maximize RESP and CESG this year?"},
+        include_visualization=False,
+    )["narrative"]
+    resp_retirement = run_recommendation_from_context(
+        {**base, "question": "Should we prioritize RRSP or TFSA for retirement?"},
+        include_visualization=False,
+    )["narrative"]
+
+    assert resp_education != resp_retirement
+    assert "RESP" in resp_education.upper()
+    assert ("RRSP" in resp_retirement.upper()) or ("TFSA" in resp_retirement.upper())
+
+
+def test_single_recommendation_chart_changes_with_question():
+    base = _sample_context()
+    out_education = run_recommendation_from_context(
+        {**base, "question": "How should we maximize RESP and CESG this year?"},
+        include_visualization=True,
+    )
+    out_retirement = run_recommendation_from_context(
+        {**base, "question": "Should we prioritize RRSP or TFSA for retirement?"},
+        include_visualization=True,
+    )
+
+    chart_edu = out_education["chart_spec"]
+    chart_ret = out_retirement["chart_spec"]
+    assert chart_edu and chart_ret
+    assert chart_edu["type"] == "five_year_projection"
+    assert chart_ret["type"] == "five_year_projection"
+    # Question-specific strategy logic should alter projection assumptions and outcomes.
+    assert chart_edu["series_recommended_dollars"] != chart_ret["series_recommended_dollars"]
