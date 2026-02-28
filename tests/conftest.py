@@ -13,6 +13,7 @@ from app.models.household import Household  # noqa: F401
 from app.models.household_member import HouseholdMember  # noqa: F401
 from app.models.account import Account  # noqa: F401
 from app.models.goal import Goal  # noqa: F401
+from app.models.transaction import Transaction  # noqa: F401
 
 
 # In-memory SQLite for tests

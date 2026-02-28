@@ -36,6 +36,8 @@ def list_goals(
         .filter(HouseholdMember.user_id == current_user.id)
         .all()
     ]
+    if not household_ids:
+        return []
     q = db.query(Goal).filter(Goal.household_id.in_(household_ids))
     if household_id is not None:
         _ensure_household_member(db, current_user.id, household_id)

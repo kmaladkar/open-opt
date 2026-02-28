@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.account import Account, AccountType
 from app.models.household_member import HouseholdMember
 from app.schemas.account import AccountCreate, AccountResponse
+from app.services.transaction_patterns import get_transaction_patterns_for_account
 
 router = APIRouter()
 
@@ -87,3 +88,21 @@ def get_account(
     elif account.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Account not found")
     return account
+
+
+@router.get("/{account_id}/transaction_patterns")
+def get_account_transaction_patterns(
+    account_id: int,
+    days_back: int = 90,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pay patterns for this account: recurring vs one-off, by category, monthly income/expense (from SQLite)."""
+    account = db.get(Account, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account.household_id:
+        _ensure_household_member(db, current_user.id, account.household_id)
+    elif account.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return get_transaction_patterns_for_account(db, account_id, days_back=days_back)

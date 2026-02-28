@@ -4,57 +4,94 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Open Opt – Family Finance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <div id="app">
-    <header class="header">
-      <h1>Open Opt</h1>
-      <p class="tagline">Wealthsimple-style family finance</p>
-      <div id="auth-actions"></div>
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="/" class="logo">Open Opt</a>
+        <p class="logo-tagline">Family finance, simply</p>
+        <nav class="header-nav">
+          <div id="auth-actions"></div>
+        </nav>
+      </div>
     </header>
 
-    <div id="login-section" class="panel">
-      <h2>Sign in</h2>
-      <form id="login-form">
-        <label>Email <input type="email" id="login-email" required placeholder="mock_smith_family_0@example.com" /></label>
-        <label>Password <input type="password" id="login-password" required placeholder="mock123" /></label>
-        <button type="submit">Sign in</button>
-      </form>
-      <p id="login-error" class="error"></p>
-    </div>
-
-    <div id="dashboard-section" class="hidden">
-      <section class="panel">
-        <h2>Households</h2>
-        <ul id="household-list"></ul>
-      </section>
-      <section class="panel">
-        <h2>Accounts</h2>
-        <ul id="account-list"></ul>
-      </section>
-      <section class="panel">
-        <h2>Goals</h2>
-        <ul id="goal-list"></ul>
-      </section>
-
-      <section class="panel recommendations-panel">
-        <h2>Ask for recommendations</h2>
-        <p class="hint">e.g. &ldquo;Best way to save for the kids&rsquo; education and our retirement&rdquo;</p>
-        <form id="recommendation-form">
-          <textarea id="recommendation-question" rows="2" placeholder="Your question..."></textarea>
-          <button type="submit">Get recommendations</button>
-        </form>
-        <div id="recommendation-loading" class="hidden">Loading…</div>
-        <div id="recommendation-result" class="hidden">
-          <div id="recommendation-narrative" class="narrative"></div>
-          <div id="recommendation-chart-container" class="chart-container hidden">
-            <canvas id="recommendation-chart"></canvas>
-          </div>
+    <main class="main">
+      <div id="login-section" class="login-wrap">
+        <div class="login-card">
+          <h1 class="login-title">Sign in</h1>
+          <p class="login-subtitle">Use your household login to see accounts and get recommendations.</p>
+          <form id="login-form" class="login-form">
+            <label class="input-label">Email</label>
+            <input type="email" id="login-email" class="input" required placeholder="you@example.com" autocomplete="email" />
+            <label class="input-label">Password</label>
+            <input type="password" id="login-password" class="input" required placeholder="••••••••" autocomplete="current-password" />
+            <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+          </form>
+          <p id="login-error" class="error-msg"></p>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <div id="dashboard-section" class="dashboard hidden">
+        <div class="dashboard-hint">
+          Accounts and goals are merged across your household. Recommendations use everyone&rsquo;s accounts together.
+        </div>
+
+        <section class="card card-hero">
+          <p class="card-label">Total across all accounts</p>
+          <p id="hero-total" class="hero-total">$0.00</p>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Households &amp; family</h2>
+          <p class="card-hint">Your household(s) and members</p>
+          <ul id="household-list" class="list list-clean"></ul>
+        </section>
+
+        <section class="card recommendations-card">
+          <h2 class="card-title">Get recommendations</h2>
+          <p class="card-hint">Ask a question and we&rsquo;ll suggest next steps based on your accounts and goals.</p>
+          <form id="recommendation-form" class="recommendation-form">
+            <textarea id="recommendation-question" class="textarea" rows="2" placeholder="e.g. Best way to save for the kids' education and our retirement"></textarea>
+            <button type="submit" class="btn btn-primary">Get recommendations</button>
+          </form>
+          <div id="recommendation-loading" class="loading-msg hidden">Loading…</div>
+          <div id="recommendation-result" class="recommendation-result hidden">
+            <div id="recommendation-narrative" class="narrative"></div>
+            <div id="recommendation-chart-container" class="chart-container hidden">
+              <canvas id="recommendation-chart"></canvas>
+              <p id="recommendation-chart-note" class="chart-note"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">All accounts</h2>
+          <p class="card-hint" id="account-summary"></p>
+          <div id="accounts-tables"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Goals</h2>
+          <ul id="goal-list" class="list list-goals"></ul>
+        </section>
+
+        <section class="card auto-recommendations-card">
+          <h2 class="card-title">Recommended for you</h2>
+          <p class="card-hint">Personalized suggestions based on your accounts and goals. Updated when you load the dashboard.</p>
+          <div id="auto-recommendations-loading" class="loading-msg">Loading recommendations…</div>
+          <div id="auto-recommendations-result" class="recommendation-result hidden">
+            <div id="auto-recommendations-list" class="recommendations-list"></div>
+          </div>
+        </section>
+      </div>
+    </main>
   </div>
   <script src="/static/app.js"></script>
 </body>

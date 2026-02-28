@@ -5,6 +5,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.models.account import Account
+from app.models.transaction import Transaction
 from app.services.open_banking import get_open_banking_adapter, OBBalance, OBTransaction
 
 
@@ -67,9 +68,27 @@ def get_transactions_for_account(
     institution_id: str | None = None,
 ) -> list[dict]:
     """
-    Return transactions for an account. DB does not store transactions yet (seed has none);
-    if use_open_banking and account_external_id/institution_id provided, returns adapter transactions.
+    Return transactions for an account. Prefer SQLite (Transaction model); fall back to open banking adapter if requested.
     """
+    q = db.query(Transaction).filter(Transaction.account_id == account_id)
+    if from_date:
+        q = q.filter(Transaction.date >= from_date)
+    if to_date:
+        q = q.filter(Transaction.date <= to_date)
+    txs_db = q.order_by(Transaction.date.desc()).all()
+    if txs_db:
+        return [
+            {
+                "id": t.id,
+                "amount_cents": t.amount_cents,
+                "date": t.date.isoformat(),
+                "description": t.description,
+                "pattern": t.pattern.value if hasattr(t.pattern, "value") else str(t.pattern),
+                "category": t.category.value if hasattr(t.category, "value") else str(t.category),
+                "is_income": t.amount_cents > 0,
+            }
+            for t in txs_db
+        ]
     if use_open_banking and account_external_id and institution_id:
         adapter = get_open_banking_adapter()
         txs = adapter.get_transactions(account_external_id, institution_id, from_date, to_date)
@@ -83,5 +102,4 @@ def get_transactions_for_account(
             }
             for t in txs
         ]
-    # DB transactions: when Transaction model exists, query here
     return []

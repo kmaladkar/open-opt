@@ -10,8 +10,12 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
 from app.models.household_member import HouseholdMember
-from app.agents.main_agent import run_main_agent
-from app.schemas.recommendations import RecommendationRequest, RecommendationResponse
+from app.agents.recommendation_agent import run_recommendation_agent, run_auto_recommendations_list
+from app.schemas.recommendations import (
+    RecommendationRequest,
+    RecommendationResponse,
+    AutoRecommendationsResponse,
+)
 
 router = APIRouter()
 
@@ -45,17 +49,47 @@ def post_recommendations(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Ask the main agent (team lead). For recommendation-style questions, the agent
-    delegates to the Visualization agent and returns narrative + optional chart_spec.
+    Recommendation agent: queries the DB via tools (accounts, goals, transaction patterns, etc.),
+    retrieves recommendations (LLM), and visualizes (chart spec). Returns narrative + optional chart_spec.
     """
     household_id = _get_household_id_for_user(db, current_user.id, body.household_id)
-    result = run_main_agent(
-        question=body.question,
-        household_id=household_id,
-        user_id=current_user.id,
+    result = run_recommendation_agent(
         db=db,
+        household_id=household_id,
+        question=body.question or "",
+        include_visualization=body.include_visualization,
     )
     return RecommendationResponse(
         response=result.get("response", ""),
+        chart_spec=result.get("chart_spec"),
+    )
+
+
+@router.get("/auto", response_model=AutoRecommendationsResponse)
+def get_auto_recommendations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Automatic recommendations for the current user's household: 5+ recommendations (title + body)
+    and one chart spec. Used by the dashboard "Recommended for you" section at the bottom.
+    """
+    household_id = _get_household_id_for_user(db, current_user.id, None)
+    result = run_auto_recommendations_list(
+        db=db,
+        household_id=household_id,
+        include_visualization=True,
+        min_recommendations=5,
+    )
+    items = [
+        {
+            "title": r.get("title", "Recommendation"),
+            "response": r.get("response", ""),
+            "chart_spec": r.get("chart_spec"),
+        }
+        for r in result.get("recommendations", [])
+    ]
+    return AutoRecommendationsResponse(
+        recommendations=items,
         chart_spec=result.get("chart_spec"),
     )

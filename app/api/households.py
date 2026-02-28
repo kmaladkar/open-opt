@@ -13,6 +13,7 @@ from app.schemas.household import (
     HouseholdUpdate,
     HouseholdMemberResponse,
 )
+from app.services.transaction_patterns import get_transaction_patterns_for_household
 
 router = APIRouter()
 
@@ -110,6 +111,18 @@ def list_household_members(
         .all()
     )
     return members
+
+
+@router.get("/{household_id}/transaction_patterns")
+def get_household_transaction_patterns(
+    household_id: int,
+    days_back: int = 90,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pay patterns across all household accounts: by account, category, recurring vs one-off (from SQLite)."""
+    _ensure_member(db, current_user.id, household_id)
+    return get_transaction_patterns_for_household(db, household_id, days_back=days_back)
 
 
 def _ensure_member(db: Session, user_id: int, household_id: int) -> None:

@@ -35,6 +35,9 @@ class Account(Base):
     household: Mapped["Household | None"] = relationship(
         "Household", back_populates="accounts"
     )
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction", back_populates="account", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Account(id={self.id}, type={self.type}, name={self.name}, institution_id={self.institution_id})>"
