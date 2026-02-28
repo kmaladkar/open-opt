@@ -16,6 +16,12 @@
   function hide(el) {
     if (el) el.classList.add('hidden');
   }
+  function formatCurrency(amount, fractionDigits) {
+    return '$' + Number(amount || 0).toLocaleString(undefined, {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    });
+  }
 
   function showLogin() {
     show(document.getElementById('login-section'));
@@ -97,11 +103,11 @@
       }) || '<li class="muted">No households</li>';
 
       const totalCents = accounts.reduce(function (sum, a) { return sum + (a.balance_cents || 0); }, 0);
-      const totalDollars = (totalCents / 100).toFixed(2);
+      const totalDollars = totalCents / 100;
       var heroEl = document.getElementById('hero-total');
-      if (heroEl) heroEl.textContent = '$' + totalDollars;
+      if (heroEl) heroEl.textContent = formatCurrency(totalDollars, 2);
       document.getElementById('account-summary').textContent =
-        accounts.length + ' account' + (accounts.length !== 1 ? 's' : '') + ' across your household(s). Total: $' + totalDollars;
+        accounts.length + ' account' + (accounts.length !== 1 ? 's' : '') + ' across your household(s). Total: ' + formatCurrency(totalDollars, 2);
 
       // Build one table per household with one column per user (member)
       function memberLabels(members) {
@@ -136,22 +142,22 @@
           var rows = houseAccounts.map(function (a) {
             var cents = a.balance_cents || 0;
             cumulativeCents += cents;
-            var bal = (cents / 100).toFixed(2);
-            var cum = (cumulativeCents / 100).toFixed(2);
+            var bal = cents / 100;
+            var cum = cumulativeCents / 100;
             var ownerId = a.user_id;
             var cells = ['<td>' + escapeHtml(a.name) + '</td>', '<td>' + escapeHtml(a.institution_id) + '</td>'];
             labels.forEach(function (l) {
-              var num = (ownerId && l.key === 'u' + ownerId) ? bal : '';
-              cells.push('<td class="num">' + (num ? '$' + num : '–') + '</td>');
+              var num = (ownerId && l.key === 'u' + ownerId) ? formatCurrency(bal, 2) : '';
+              cells.push('<td class="num">' + (num || '–') + '</td>');
             });
-            cells.push('<td class="num">' + (!ownerId ? '$' + bal : '–') + '</td>');
-            cells.push('<td class="num">$' + bal + '</td>');
-            cells.push('<td class="num cumulative">$' + cum + '</td>');
+            cells.push('<td class="num">' + (!ownerId ? formatCurrency(bal, 2) : '–') + '</td>');
+            cells.push('<td class="num">' + formatCurrency(bal, 2) + '</td>');
+            cells.push('<td class="num cumulative">' + formatCurrency(cum, 2) + '</td>');
             return '<tr>' + cells.join('') + '</tr>';
           });
           var houseTotal = houseAccounts.reduce(function (s, a) { return s + (a.balance_cents || 0); }, 0);
           var totalColspan = 2 + labels.length + 1;
-          var foot = '<tfoot><tr class="total-row"><td colspan="' + totalColspan + '"><strong>Subtotal</strong></td><td class="num" colspan="2"><strong>$' + (houseTotal / 100).toFixed(2) + '</strong></td></tr></tfoot>';
+          var foot = '<tfoot><tr class="total-row"><td colspan="' + totalColspan + '"><strong>Subtotal</strong></td><td class="num" colspan="2"><strong>' + formatCurrency(houseTotal / 100, 2) + '</strong></td></tr></tfoot>';
           var html = '<div class="household-accounts"><h3 class="household-accounts-title">' + escapeHtml(h.name) + '</h3><div class="accounts-table-wrap"><table class="accounts-table">' + thead + '<tbody>' + rows.join('') + '</tbody>' + foot + '</table></div></div>';
           container.insertAdjacentHTML('beforeend', html);
         });
@@ -159,8 +165,8 @@
       buildHouseholdTables();
 
       document.getElementById('goal-list').innerHTML = list(goals, function (g) {
-        const amt = (g.target_amount_cents / 100).toFixed(0);
-        return '<li>' + escapeHtml(g.name) + ' – $' + amt + '</li>';
+        const amt = g.target_amount_cents / 100;
+        return '<li>' + escapeHtml(g.name) + ' – ' + formatCurrency(amt, 0) + '</li>';
       }) || '<li class="muted">No goals</li>';
 
       loadAutoRecommendations();
